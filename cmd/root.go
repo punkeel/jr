@@ -14,16 +14,23 @@ var rootCmd = &cobra.Command{
 	Long: `jr (job run) is a CLI tool for starting, monitoring, and managing
 long-running jobs via systemd user units. Jobs survive SSH disconnects
 and can be monitored from any session.`,
-	SilenceErrors: true,
+	SilenceErrors: false,
 	SilenceUsage:  true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			return fmt.Errorf("unknown command: %s\nSee 'jr --help' for available commands", args[0])
+		}
+		return cmd.Help()
+	},
 }
 
 func Execute() error {
+	defer db.Close()
 	return rootCmd.Execute()
 }
 
 func init() {
-	rootCmd.AddCommand(startCmd)
+	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(logsCmd)

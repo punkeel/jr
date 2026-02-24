@@ -27,7 +27,7 @@ type UnitInfo struct {
 func GenerateUnitName(name string) string {
 	cleanName := sanitizeName(name)
 	timestamp := time.Now().UTC().Format("20060102-150405")
-	shortID := ulid.Make().String()[:8]
+	shortID := ulid.Make().String()[:16]
 	return fmt.Sprintf("%s%s-%s-%s.service", unitPrefix, cleanName, timestamp, shortID)
 }
 
@@ -54,7 +54,7 @@ func StartUnit(unit, cwd string, argv []string, env map[string]string, props map
 	args := []string{
 		"--user",
 		"--unit", unit,
-		"--working-directory", cwd,
+		"--same-dir",
 		"--collect",
 	}
 
@@ -134,41 +134,53 @@ func parseShowOutput(output string, units []string) map[string]*UnitInfo {
 		result[unit] = &UnitInfo{Unit: unit}
 	}
 
+	// systemctl show outputs properties grouped by unit, with empty lines between
+	// We track which unit index we're currently processing
+	unitIdx := 0
 	scanner := bufio.NewScanner(strings.NewReader(output))
 
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		if strings.HasPrefix(line, "ExecMainStatus=") ||
-			strings.HasPrefix(line, "ActiveState=") ||
-			strings.HasPrefix(line, "SubState=") ||
-			strings.HasPrefix(line, "ExecMainPID=") ||
-			strings.HasPrefix(line, "ExecMainStartTimestamp=") ||
-			strings.HasPrefix(line, "ExecMainExitTimestamp=") {
-
-			for _, unit := range units {
-				info := result[unit]
-				if info.ExecMainStatus == "" && strings.HasPrefix(line, "ExecMainStatus=") {
-					info.ExecMainStatus = strings.TrimPrefix(line, "ExecMainStatus=")
-					break
-				}
-				if info.ActiveState == "" && strings.HasPrefix(line, "ActiveState=") {
-					info.ActiveState = strings.TrimPrefix(line, "ActiveState=")
-					break
-				}
-				if info.SubState == "" && strings.HasPrefix(line, "SubState=") {
-					info.SubState = strings.TrimPrefix(line, "SubState=")
-					break
-				}
+		// Empty line indicates move to next unit
+		if line == "" {
+			unitIdx++
+			if unitIdx >= len(units) {
+				unitIdx = len(units) - 1
 			}
+			continue
+		}
+
+		if unitIdx >= len(units) {
+			continue
+		}
+
+		info := result[units[unitIdx]]
+
+		if strings.HasPrefix(line, "ActiveState=") {
+			info.ActiveState = strings.TrimPrefix(line, "ActiveState=")
+		} else if strings.HasPrefix(line, "SubState=") {
+			info.SubState = strings.TrimPrefix(line, "SubState=")
+		} else if strings.HasPrefix(line, "ExecMainStatus=") {
+			info.ExecMainStatus = strings.TrimPrefix(line, "ExecMainStatus=")
+		} else if strings.HasPrefix(line, "ExecMainPID=") {
+			info.ExecMainPID = strings.TrimPrefix(line, "ExecMainPID=")
+		} else if strings.HasPrefix(line, "ExecMainStartTimestamp=") {
+			info.ExecMainStartTimestamp = strings.TrimPrefix(line, "ExecMainStartTimestamp=")
+		} else if strings.HasPrefix(line, "ExecMainExitTimestamp=") {
+			info.ExecMainExitTimestamp = strings.TrimPrefix(line, "ExecMainExitTimestamp=")
 		}
 	}
 
 	return result
 }
 
-func Logs(unit string, follow bool, lines int, since, until string, noColor bool) error {
-	args := []string{"--user", "-u", unit, "-o", "short-iso"}
+func Logs(unit string, follow bool, lines int, since, until string, noColor bool, raw bool) error {
+	outputFormat := "short-iso"
+	if raw {
+		outputFormat = "cat"
+	}
+	args := []string{"--user", "-u", unit, "-o", outputFormat}
 
 	if follow {
 		args = append(args, "-f")

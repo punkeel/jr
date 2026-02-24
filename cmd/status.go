@@ -78,8 +78,11 @@ func outputStatusHuman(job *db.Job, info *systemd.UnitInfo) error {
 
 	var argv []string
 	if job.ArgvJSON != "" {
-		json.Unmarshal([]byte(job.ArgvJSON), &argv)
-		fmt.Printf("Command:     %s\n", formatArgv(argv))
+		if err := json.Unmarshal([]byte(job.ArgvJSON), &argv); err != nil {
+			fmt.Printf("Command:     <unmarshal error>\n")
+		} else {
+			fmt.Printf("Command:     %s\n", formatArgv(argv))
+		}
 	}
 
 	if job.Host.Valid {
@@ -108,14 +111,16 @@ func outputStatusJSON(job *db.Job, info *systemd.UnitInfo) error {
 
 	var argv []string
 	if job.ArgvJSON != "" {
-		json.Unmarshal([]byte(job.ArgvJSON), &argv)
-		output["argv"] = argv
+		if err := json.Unmarshal([]byte(job.ArgvJSON), &argv); err == nil {
+			output["argv"] = argv
+		}
 	}
 
 	var env map[string]string
 	if job.EnvJSON != "" {
-		json.Unmarshal([]byte(job.EnvJSON), &env)
-		output["env"] = env
+		if err := json.Unmarshal([]byte(job.EnvJSON), &env); err == nil {
+			output["env"] = env
+		}
 	}
 
 	if info.ExecMainStartTimestamp != "" {

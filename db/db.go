@@ -61,6 +61,13 @@ func InitDB() error {
 	return createTables()
 }
 
+func Close() error {
+	if DB != nil {
+		return DB.Close()
+	}
+	return nil
+}
+
 func createTables() error {
 	query := `
 	CREATE TABLE IF NOT EXISTS jobs (
@@ -220,10 +227,37 @@ func DeleteJob(id int64) error {
 }
 
 func PruneJobs(keep int, olderThan time.Duration, failedOnly bool) error {
-	query := `DELETE FROM jobs WHERE id IN (
-		SELECT id FROM jobs ORDER BY created_at_utc DESC LIMIT -1 OFFSET ?
-	)`
-	_, err := DB.Exec(query, keep)
+	var conditions []string
+	var args []interface{}
+
+	// Always keep the most recent N jobs
+	if keep > 0 {
+		conditions = append(conditions, "id NOT IN (SELECT id FROM jobs ORDER BY created_at_utc DESC LIMIT ?)")
+		args = append(args, keep)
+	}
+
+	// Filter by age
+	if olderThan > 0 {
+		cutoff := time.Now().UTC().Add(-olderThan).Format(time.RFC3339)
+		conditions = append(conditions, "created_at_utc < ?")
+		args = append(args, cutoff)
+	}
+
+	// Filter by failed state
+	if failedOnly {
+		conditions = append(conditions, "last_known_state = 'failed'")
+	}
+
+	if len(conditions) == 0 {
+		return nil
+	}
+
+	query := "DELETE FROM jobs WHERE " + conditions[0]
+	for i := 1; i < len(conditions); i++ {
+		query += " AND " + conditions[i]
+	}
+
+	_, err := DB.Exec(query, args...)
 	return err
 }
 

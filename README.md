@@ -15,14 +15,16 @@ make install
 ## Usage
 
 ```bash
-jr start <command> [args...]  # Start a new job
-jr list                       # List all jobs
-jr status <id>                # Show job status
-jr logs <id>                  # View job logs
-jr stop <id>                  # Stop a job
-jr rm <id>                    # Remove a job
-jr prune                      # Remove stopped jobs
-jr doctor                     # Check system health
+jr run [flags] -- <command> [args...]  # Run a new job (alias: start)
+  jr run -a -- <command>                # Run and attach to output (Ctrl+C detaches)
+jr list                                # List all jobs
+jr status <id>                         # Show job status
+jr logs <id>                           # View job logs
+  jr logs --raw <id>                    # View logs without timestamp/hostname prefix
+jr stop <id>                           # Stop a job
+jr rm <id>                             # Remove a job
+jr prune                               # Remove old jobs
+jr doctor                              # Check system health (with colors!)
 ```
 
 ## Requirements

@@ -93,7 +93,9 @@ func outputListJSON(jobs []*db.Job, unitInfos map[string]*systemd.UnitInfo) erro
 
 		var argv []string
 		if job.ArgvJSON != "" {
-			json.Unmarshal([]byte(job.ArgvJSON), &argv)
+			if err := json.Unmarshal([]byte(job.ArgvJSON), &argv); err != nil {
+				argv = []string{"<unmarshal error>"}
+			}
 		}
 
 		output = append(output, JobOutput{
@@ -124,7 +126,9 @@ func outputListTable(jobs []*db.Job, unitInfos map[string]*systemd.UnitInfo) err
 
 		var argv []string
 		if job.ArgvJSON != "" {
-			json.Unmarshal([]byte(job.ArgvJSON), &argv)
+			if err := json.Unmarshal([]byte(job.ArgvJSON), &argv); err != nil {
+				argv = []string{"<unmarshal error>"}
+			}
 		}
 
 		created, _ := time.Parse(time.RFC3339, job.CreatedAtUTC)

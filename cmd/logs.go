@@ -14,6 +14,7 @@ var (
 	logsSince   string
 	logsUntil   string
 	logsNoColor bool
+	logsRaw     bool
 )
 
 var logsCmd = &cobra.Command{
@@ -30,6 +31,7 @@ func init() {
 	logsCmd.Flags().StringVar(&logsSince, "since", "", "show logs since timestamp")
 	logsCmd.Flags().StringVar(&logsUntil, "until", "", "show logs until timestamp")
 	logsCmd.Flags().BoolVar(&logsNoColor, "no-color", false, "disable colored output")
+	logsCmd.Flags().BoolVar(&logsRaw, "raw", false, "show raw output without timestamp/hostname prefix")
 }
 
 func runLogs(cmd *cobra.Command, args []string) error {
@@ -41,5 +43,5 @@ func runLogs(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("job not found: %s", args[0])
 	}
 
-	return systemd.Logs(job.Unit, logsFollow, logsLines, logsSince, logsUntil, logsNoColor)
+	return systemd.Logs(job.Unit, logsFollow, logsLines, logsSince, logsUntil, logsNoColor, logsRaw)
 }

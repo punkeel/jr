@@ -1,8 +1,8 @@
 .PHONY: all
 all: jr
 
-jr:
-	go build ./...
+jr: **/*.go *.go
+	go build .
 
 .PHONY: install
 install: jr
